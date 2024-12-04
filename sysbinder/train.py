@@ -13,9 +13,9 @@ from datetime import datetime
 from rtpt import RTPT
 
 
-from sysbinder import SysBinderImageAutoEncoder
-from data import GlobDataset
-from utils_sysbinder import linear_warmup, cosine_anneal, set_seed
+from sysbinder.sysbinder import SysBinderImageAutoEncoder
+from sysbinder.data import GlobDataset
+from sysbinder.utils_sysbinder import linear_warmup, cosine_anneal, set_seed
 
 
 torch.set_num_threads(10)

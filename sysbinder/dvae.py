@@ -1,4 +1,4 @@
-from utils_sysbinder import *
+from sysbinder.utils_sysbinder import *
 import torch.nn as nn
 
 class dVAE(nn.Module):

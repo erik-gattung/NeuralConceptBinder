@@ -139,7 +139,7 @@ class NeuralConceptBinder(nn.Module):
         B = imgs.shape[0]
         imgs = imgs.to(self.device)
 
-        slots, _, attns, _ = self.model.encode(imgs)
+        slots, attns_vis, attns, _ = self.model.encode(imgs)
 
         # get the maximal cluster ids dim: [Batch, NObjs, NBlocks] --> code
         # and the probability for that id if majority_voting is set to True, otherwise this is None:
@@ -150,7 +150,7 @@ class NeuralConceptBinder(nn.Module):
         codes = representations[..., 0]
         probs = representations[..., 1]
 
-        return codes, probs
+        return codes, probs, slots, attns_vis, attns
 
     def forward(self):
         pass

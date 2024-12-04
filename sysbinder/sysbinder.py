@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-from dvae import dVAE
-from transformer import TransformerDecoder, TransformerEncoder
-from utils_sysbinder import *
+from sysbinder.dvae import dVAE
+from sysbinder.transformer import TransformerDecoder, TransformerEncoder
+from sysbinder.utils_sysbinder import *
 
 
 class BlockPrototypeMemory(nn.Module):
