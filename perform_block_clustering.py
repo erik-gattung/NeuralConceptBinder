@@ -516,7 +516,7 @@ def gather_obj_encs(model, loader, args):
 		img_locs = sample[-1]
 		sample = sample[:-1]
 		if "car" in args.data_path:
-			imgs = map(lambda x: x.to(args.device), sample)
+			imgs = torch.stack([x.to(args.device) for x in sample])
 		else:
 			imgs, _, _, _ = map(lambda x: x.to(args.device), sample)
 
@@ -569,7 +569,7 @@ def main():
 
 
 	loader_kwargs = {
-		"batch_size": args.batch_size,
+		"batch_size": args.batch_size + 1 if "car" in args.data_path else args.batch_size,
 		"shuffle": True,
 		"num_workers": args.num_workers,
 		"pin_memory": True,
