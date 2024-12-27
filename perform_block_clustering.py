@@ -22,6 +22,7 @@ from sklearn.metrics import pairwise_distances
 
 from data import CLEVREasyWithAnnotations, CLEVREasy_1_WithAnnotations, CLEVR4_1_WithAnnotations
 from sysbinder.sysbinder import SysBinderImageAutoEncoder
+from sysbinder.data import GlobDataset
 import utils_ncb as utils_ncb
 
 torch.set_num_threads(20)
@@ -514,7 +515,10 @@ def gather_obj_encs(model, loader, args):
 	for i, sample in tqdm(enumerate(loader)):
 		img_locs = sample[-1]
 		sample = sample[:-1]
-		imgs, _, _, _ = map(lambda x: x.to(args.device), sample)
+		if "car" in args.data_path:
+			imgs = map(lambda x: x.to(args.device), sample)
+		else:
+			imgs, _, _, _ = map(lambda x: x.to(args.device), sample)
 
 		# encode image
 		slot_encs, _, attns, _ = model.encode(imgs)
@@ -552,6 +556,8 @@ def main():
 			root=args.data_path, phase="train", img_size=args.image_size, max_num_objs=args.num_slots,
 			num_categories=args.num_categories,
 		)
+	elif "car" in args.data_path:
+		train_dataset = GlobDataset(os.path.join(args.data_path, "*.jpg"), phase="train", img_size=args.image_size)
 
 	def seed_worker(worker_id):
 		worker_seed = torch.initial_seed()
@@ -588,7 +594,8 @@ def main():
 		except:
 			print('model checkpoint not in right format?')
 			exit()
-	args.log_dir = os.path.join(*args.checkpoint_path.split(os.path.sep)[:-1])
+	# args.log_dir = os.path.join(*args.checkpoint_path.split(os.path.sep)[:-1])
+	args.log_dir = os.path.dirname(args.checkpoint_path)
 	print(f'loaded ...{args.checkpoint_path}')
 
 	model.to(args.device)
