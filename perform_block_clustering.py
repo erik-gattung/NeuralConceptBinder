@@ -36,7 +36,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=0)
 parser.add_argument('--batch_size', type=int, default=40)
 parser.add_argument('--num_workers', type=int, default=0)
-parser.add_argument('--image_size', type=int, default=128)
+# parser.add_argument('--image_size', type=int, default=128)
+parser.add_argument('--image_height', type=int, default=128)
+parser.add_argument('--image_width', type=int, default=192)
 parser.add_argument('--image_channels', type=int, default=3)
 
 parser.add_argument('--checkpoint_path', default='logs/sysbind_orig_seed0/best_model.pt')
@@ -515,7 +517,7 @@ def gather_obj_encs(model, loader, args):
 	for i, sample in tqdm(enumerate(loader)):
 		img_locs = sample[-1]
 		sample = sample[:-1]
-		if "car" in args.data_path:
+		if "car" in args.data_path or "clevrer_video_frames" in args.data_path:
 			imgs = torch.stack([x.to(args.device) for x in sample])
 		else:
 			imgs, _, _, _ = map(lambda x: x.to(args.device), sample)
@@ -556,8 +558,8 @@ def main():
 			root=args.data_path, phase="train", img_size=args.image_size, max_num_objs=args.num_slots,
 			num_categories=args.num_categories,
 		)
-	elif "car" in args.data_path:
-		train_dataset = GlobDataset(os.path.join(args.data_path, "*.jpg"), phase="train", img_size=args.image_size)
+	elif "car" in args.data_path or "clevrer_video_frames" in args.data_path:
+		train_dataset = GlobDataset(os.path.join(args.data_path, "*.jpg"), phase="train", img_height=args.image_height, img_width=args.image_width)
 
 	def seed_worker(worker_id):
 		worker_seed = torch.initial_seed()
@@ -569,7 +571,7 @@ def main():
 
 
 	loader_kwargs = {
-		"batch_size": args.batch_size + 1 if "car" in args.data_path else args.batch_size,
+		"batch_size": args.batch_size + 1 if "car" in args.data_path or "clevrer_video_frames" in args.data_path else args.batch_size,
 		"shuffle": True,
 		"num_workers": args.num_workers,
 		"pin_memory": True,
