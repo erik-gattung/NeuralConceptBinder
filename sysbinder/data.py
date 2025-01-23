@@ -7,9 +7,11 @@ from PIL import Image
 
 
 class GlobDataset(Dataset):
-    def __init__(self, root, phase, img_size):
+    def __init__(self, root, phase, img_height, img_width):
         self.root = root
-        self.img_size = img_size
+        # self.img_size = img_size
+        self.img_height = img_height
+        self.img_width = img_width
         self.total_imgs = sorted(glob.glob(root))
 
         if phase == 'train':
@@ -29,6 +31,7 @@ class GlobDataset(Dataset):
     def __getitem__(self, idx):
         img_loc = self.total_imgs[idx]
         image = Image.open(img_loc).convert("RGB")
-        image = image.resize((self.img_size, self.img_size))
+        # image = image.resize((self.img_size, self.img_size))
+        image = image.resize((self.img_width, self.img_height))
         tensor_image = self.transform(image)
         return tensor_image

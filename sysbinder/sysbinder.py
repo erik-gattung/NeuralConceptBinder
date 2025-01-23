@@ -144,13 +144,15 @@ class ImageEncoder(nn.Module):
         super().__init__()
 
         self.cnn = nn.Sequential(
-            Conv2dBlock(args.image_channels, args.cnn_hidden_size, 5, 1 if args.image_size == 64 else 2, 2),
+            # Conv2dBlock(args.image_channels, args.cnn_hidden_size, 5, 1 if args.image_size == 64 else 2, 2),
+            Conv2dBlock(args.image_channels, args.cnn_hidden_size, 5, 2, 2),
             Conv2dBlock(args.cnn_hidden_size, args.cnn_hidden_size, 5, 1, 2),
             Conv2dBlock(args.cnn_hidden_size, args.cnn_hidden_size, 5, 1, 2),
             conv2d(args.cnn_hidden_size, args.d_model, 5, 1, 2),
         )
 
-        self.pos = CartesianPositionalEmbedding(args.d_model, args.image_size if args.image_size == 64 else args.image_size // 2)
+        # self.pos = CartesianPositionalEmbedding(args.d_model, args.image_size if args.image_size == 64 else args.image_size // 2)
+        self.pos = CartesianPositionalEmbedding(args.d_model, args.image_height // 2, args.image_width // 2)
 
         self.layer_norm = nn.LayerNorm(args.d_model)
 
@@ -185,10 +187,14 @@ class ImageDecoder(nn.Module):
         self.bos = nn.Parameter(torch.Tensor(1, 1, args.d_model))
         nn.init.xavier_uniform_(self.bos)
 
-        self.decoder_pos = LearnedPositionalEmbedding1D(1 + (args.image_size // 4) ** 2, args.d_model)
+        # self.decoder_pos = LearnedPositionalEmbedding1D(1 + (args.image_size // 4) ** 2, args.d_model)
+        # divide by 6 instead of 4 for smaller model size but trade accuracy
+        self.decoder_pos = LearnedPositionalEmbedding1D(1 + (args.image_height // 4) * (args.image_width // 4), args.d_model)
 
         self.tf = TransformerDecoder(
-            args.num_decoder_layers, (args.image_size // 4) ** 2, args.d_model, args.num_decoder_heads, args.dropout)
+            # args.num_decoder_layers, (args.image_size // 4) ** 2, args.d_model, args.num_decoder_heads, args.dropout
+            args.num_decoder_layers, (args.image_height // 4) * (args.image_width // 4), args.d_model, args.num_decoder_heads, args.dropout
+            )
 
         self.head = linear(args.d_model, args.vocab_size, bias=False)
 
@@ -205,7 +211,9 @@ class SysBinderImageAutoEncoder(nn.Module):
         self.mlp_hidden_size = args.mlp_hidden_size
         self.num_prototypes = args.num_prototypes
         self.image_channels = args.image_channels
-        self.image_size = args.image_size
+        # self.image_size = args.image_size
+        self.image_height = args.image_height
+        self.image_width = args.image_width
         self.vocab_size = args.vocab_size
         self.d_model = args.d_model
         self.num_blocks = args.num_blocks
@@ -329,7 +337,7 @@ class SysBinderImageAutoEncoder(nn.Module):
         slots: B, N, slot_size
         """
         B, num_slots, slot_size = slots.size()
-        H_enc, W_enc = (self.image_size // 4), (self.image_size // 4)
+        H_enc, W_enc = (self.image_height // 4), (self.image_width // 4)
         gen_len = H_enc * W_enc
 
         # block coupling

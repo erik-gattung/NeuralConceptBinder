@@ -28,7 +28,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=0)
 parser.add_argument('--batch_size', type=int, default=40)
 parser.add_argument('--num_workers', type=int, default=4)
-parser.add_argument('--image_size', type=int, default=128)
+# parser.add_argument('--image_size', type=int, default=128)
+parser.add_argument('--image_height', type=int, default=160)
+parser.add_argument('--image_width', type=int, default=240)
 parser.add_argument('--image_channels', type=int, default=3)
 
 parser.add_argument('--checkpoint_path', default='checkpoint.pt.tar')
@@ -106,8 +108,10 @@ def main(args):
         for arg in vars(args):
             f.write(f"\n{arg}: {getattr(args, arg)}")
 
-    train_dataset = GlobDataset(root=args.data_path, phase='train', img_size=args.image_size)
-    val_dataset = GlobDataset(root=args.data_path, phase='val', img_size=args.image_size)
+    # train_dataset = GlobDataset(root=args.data_path, phase='train', img_size=args.image_size)
+    # val_dataset = GlobDataset(root=args.data_path, phase='val', img_size=args.image_size)
+    train_dataset = GlobDataset(root=args.data_path, phase='train', img_height=args.image_height, img_width=args.image_width)
+    val_dataset = GlobDataset(root=args.data_path, phase='val', img_height=args.image_height, img_width=args.image_width)
 
     train_sampler = None
     val_sampler = None

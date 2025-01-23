@@ -282,21 +282,29 @@ class LearnedPositionalEmbedding1D(nn.Module):
         return: batch_size x seq_len x d_model
         """
         T = input.shape[1]
+
         return self.dropout(input + self.pe[:, offset:offset + T])
 
 
 class CartesianPositionalEmbedding(nn.Module):
 
-    def __init__(self, channels, image_size):
+    def __init__(self, channels, image_height, image_width):
         super().__init__()
 
         self.projection = conv2d(4, channels, 1)
-        self.pe = nn.Parameter(self.build_grid(image_size).unsqueeze(0), requires_grad=False)
+        self.pe = nn.Parameter(self.build_grid(image_height, image_width).unsqueeze(0), requires_grad=False)
 
-    def build_grid(self, side_length):
-        coords = torch.linspace(0., 1., side_length + 1)
-        coords = 0.5 * (coords[:-1] + coords[1:])
-        grid_y, grid_x = torch.meshgrid(coords, coords)
+    def build_grid(self, height, width):
+        # Create normalized coordinates for height and width
+        coords_y = torch.linspace(0., 1., height + 1)
+        coords_x = torch.linspace(0., 1., width + 1)
+
+        # Compute midpoints between coordinates
+        coords_y = 0.5 * (coords_y[:-1] + coords_y[1:])
+        coords_x = 0.5 * (coords_x[:-1] + coords_x[1:])
+
+        # Create meshgrid for rectangular dimensions
+        grid_y, grid_x = torch.meshgrid(coords_y, coords_x, indexing='ij')
         return torch.stack((grid_x, grid_y, 1 - grid_x, 1 - grid_y), dim=0)
 
     def forward(self, inputs):
