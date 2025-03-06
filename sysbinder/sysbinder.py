@@ -296,7 +296,8 @@ class SysBinderImageAutoEncoder(nn.Module):
         return (dvae_recon.clamp(0., 1.),
                 cross_entropy,
                 dvae_mse,
-                attns)
+                attns,
+                emb_set)
 
     def encode(self, image):
         """
