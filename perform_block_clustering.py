@@ -517,10 +517,11 @@ def gather_obj_encs(model, loader, args):
 	for i, sample in tqdm(enumerate(loader)):
 		img_locs = sample[-1]
 		sample = sample[:-1]
-		if "car" in args.data_path or "clevrer_video_frames" in args.data_path:
-			imgs = torch.stack([x.to(args.device) for x in sample])
-		else:
-			imgs, _, _, _ = map(lambda x: x.to(args.device), sample)
+		# if "car" in args.data_path or "clevrer_video_frames" in args.data_path:
+		# imgs = torch.stack([x.to(args.device) for x in sample])
+		imgs = torch.stack([x.to(args.device) for x in sample]).squeeze()
+		# else:
+			# imgs, _, _, _ = map(lambda x: x.to(args.device), sample)
 
 		# encode image
 		slot_encs, _, attns, _ = model.encode(imgs)
@@ -558,8 +559,11 @@ def main():
 			root=args.data_path, phase="train", img_size=args.image_size, max_num_objs=args.num_slots,
 			num_categories=args.num_categories,
 		)
-	elif "car" in args.data_path or "clevrer_video_frames" in args.data_path:
-		train_dataset = GlobDataset(os.path.join(args.data_path, "*.jpg"), phase="train", img_height=args.image_height, img_width=args.image_width)
+	else:
+	# elif "car" in args.data_path or "clevrer_video_frames" in args.data_path:
+		# train_dataset = GlobDataset(os.path.join(args.data_path, "*.jpg"), phase="train", img_height=args.image_height, img_width=args.image_width)
+		# train_dataset = GlobDataset(os.path.join(args.data_path, "*.png"), phase="train", img_height=args.image_height, img_width=args.image_width)
+		train_dataset = GlobDataset(os.path.join(args.data_path, "*.png"), phase=5000, img_height=args.image_height, img_width=args.image_width)
 
 	def seed_worker(worker_id):
 		worker_seed = torch.initial_seed()
@@ -571,7 +575,8 @@ def main():
 
 
 	loader_kwargs = {
-		"batch_size": args.batch_size + 1 if "car" in args.data_path or "clevrer_video_frames" in args.data_path else args.batch_size,
+		"batch_size": args.batch_size,
+		# "batch_size": args.batch_size + 1,
 		"shuffle": True,
 		"num_workers": args.num_workers,
 		"pin_memory": True,
