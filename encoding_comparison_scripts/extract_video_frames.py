@@ -3,8 +3,9 @@ import subprocess
 
 
 def extract_frames(video_path, frames_target_base_path):
-    os.makedirs(frames_target_base_path)
-    command = f"cd {os.path.dirname(video_path)} && ffmpeg -i {os.path.basename(video_path)} -q:v 2 -start_number 0 -loglevel quiet {frames_target_base_path}/'%05d.png'"
+    os.makedirs(frames_target_base_path, exist_ok=True)
+    # command = f"cd {os.path.dirname(video_path)} && ffmpeg -i {os.path.basename(video_path)} -q:v 2 -start_number 0 -loglevel quiet {frames_target_base_path}/'%05d.png'"
+    command = f"cd {os.path.dirname(video_path)} && ffmpeg -i {os.path.basename(video_path)} -q:v 2 -start_number 0 -loglevel quiet {frames_target_base_path}/'%05d.jpg'"
     result = subprocess.run(command, shell=True)
 
 

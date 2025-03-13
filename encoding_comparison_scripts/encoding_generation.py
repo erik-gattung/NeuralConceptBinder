@@ -5,12 +5,14 @@ from PIL import Image
 import numpy as np
 import pickle
 import os
-from neural_concept_binder import NeuralConceptBinder
 import utils_ncb as utils_bnr
 from torchvision import transforms
 from argparse import Namespace
 from sysbinder.sysbinder import SysBinderImageAutoEncoder
 from pathlib import Path
+
+# from neural_concept_binder import NeuralConceptBinder
+from memory_concept_binder import MemoryConceptBinder
 
 
 def get_ncb_encoding(
@@ -105,7 +107,7 @@ def main(video_range: range):
     )
     utils_bnr.set_seed(0)
     if args.model_type == "ncb":
-        ncb_model = NeuralConceptBinder(args)
+        ncb_model = MemoryConceptBinder(args)
     else:
         raise ValueError(f"Model type {args.model_type} not handled in this script!")
     ncb_model.to(args.device)
@@ -138,10 +140,11 @@ def main(video_range: range):
     # TODO: save encodings as pickle
     # with open(f"/app/ncb/encoding_comparison_scripts/results/finetuning_0.1_0.8/val_hard_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
     # with open(f"/app/ncb/encoding_comparison_scripts/results/default/val_hard_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
-    with open(f"/app/ncb/encoding_comparison_scripts/results/CLEVRER_default/val_hard_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
+    # with open(f"/app/ncb/encoding_comparison_scripts/results/CLEVRER_default/val_hard_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
+    with open(f"/app/ncb/encoding_comparison_scripts/results/memory/val_hard_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
         pickle.dump(hard_encoding_dict, f)
 
-    with open(f"/app/ncb/encoding_comparison_scripts/results/CLEVRER_default/val_soft_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
+    with open(f"/app/ncb/encoding_comparison_scripts/results/memory/val_soft_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
         pickle.dump(soft_encoding_dict, f)
 
 

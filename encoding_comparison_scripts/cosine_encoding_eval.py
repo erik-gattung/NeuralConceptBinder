@@ -1,7 +1,6 @@
 import pickle
 import numpy as np
 
-# TODO: Do it slot-wise?
 
 def cosine_similarity(arr1: np.ndarray, arr2: np.ndarray):
     arr1 = arr1.flatten()
