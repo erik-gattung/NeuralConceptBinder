@@ -141,6 +141,8 @@ class NeuralConceptBinder(nn.Module):
 
         slots, attns_vis, attns, _ = self.model.encode(imgs)
 
+        print(slots.shape)
+
         # get the maximal cluster ids dim: [Batch, NObjs, NBlocks] --> code
         # and the probability for that id if majority_voting is set to True, otherwise this is None:
         # [Batch, NObjs, NBlocks] --> probs
@@ -162,11 +164,15 @@ class NeuralConceptBinder(nn.Module):
         :param slot: Slots to retrieve the discrete representation for [num_slots, slot_size]
         :return: Discrete representations of the slots [num_slots, num_blocks]
         """
+        print(slots.shape)
+
         block_size = self.slot_size // self.num_blocks
         discretized_slots = []
         for slot in slots:
             # reshape slot to single blocks
             slot = slot.reshape(self.num_blocks, block_size)
+
+            print(slot.shape)
 
             representation = [
                 self.get_closest_concept(block, self.retrieval_corpus[idx])
@@ -268,6 +274,9 @@ class NeuralConceptBinder(nn.Module):
         Compute the euclidean distance between the block encoding and all prototypes/exemplars.
         """
         retrieval_encs = block_retrieval_corpus["encs"]
+
+        print("retrieval corpus shape:" + str(retrieval_encs.shape[0]))
+
         distances = [
             torch.linalg.vector_norm(retrieval_encs[i] - enc)
             for i in range(retrieval_encs.shape[0])
