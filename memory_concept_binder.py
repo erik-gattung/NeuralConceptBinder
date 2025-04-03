@@ -68,7 +68,10 @@ class MemoryConceptBinder(nn.Module):
             exit()
 
     def reset_memory(self):
-        self.model.soft_bank.clear()
+        """
+        Resets soft memory bank of Sysbinder module
+        """
+        self.model.reset_memory()
 
     def get_retrieval_corpus(self, args):
         # load retrieval corpus
@@ -142,7 +145,7 @@ class MemoryConceptBinder(nn.Module):
         B = imgs.shape[0]
         imgs = imgs.to(self.device)
 
-        slots, attns_vis, attns, _ = self.model.encode(imgs)
+        slots, attns_vis, attns, _, reset_memory_bank = self.model.encode(imgs)
 
         # get the maximal cluster ids dim: [Batch, NObjs, NBlocks] --> code
         # and the probability for that id if majority_voting is set to True, otherwise this is None:
@@ -153,7 +156,7 @@ class MemoryConceptBinder(nn.Module):
         codes = representations[..., 0]
         probs = representations[..., 1]
 
-        return codes, probs, slots, attns_vis, attns
+        return codes, probs, slots, attns_vis, attns, reset_memory_bank
 
     def forward(self):
         pass

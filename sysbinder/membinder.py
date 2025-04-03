@@ -99,12 +99,18 @@ class SysBinder(nn.Module):
                                                      temp=temp, binarize=binarize)
 
 
-    def forward(self, inputs):
+    def forward(self, inputs, prev_slots):
         B, num_inputs, input_size = inputs.size()
 
+        # TODO: Use convex combination of random and previous slots?
         # initialize slots
-        slots = inputs.new_empty(B, self.num_slots, self.slot_size).normal_()
-        slots = self.slot_mu + torch.exp(self.slot_log_sigma) * slots
+        if prev_slots is None:
+            slots = inputs.new_empty(B, self.num_slots, self.slot_size).normal_()
+            slots = self.slot_mu + torch.exp(self.slot_log_sigma) * slots
+        else:
+            slots = inputs.new_empty(B, self.num_slots, self.slot_size).normal_()
+            slots = self.slot_mu + torch.exp(self.slot_log_sigma) * slots
+            slots = 0.25 * slots + 0.75 * prev_slots
 
         # setup key and value
         inputs = self.norm_inputs(inputs)
@@ -236,6 +242,7 @@ class SysBinderImageAutoEncoder(nn.Module):
         # memory bank components
         self.soft_bank = deque(maxlen=4)
         self.convex_combination_weights = torch.Tensor([0.1, 0.15, 0.25, 0.5]).cuda()
+        self.prev_slot = None
 
         # dvae
         self.dvae = dVAE(args.vocab_size, args.image_channels)
@@ -319,19 +326,41 @@ class SysBinderImageAutoEncoder(nn.Module):
         emb_set = self.image_encoder.mlp(self.image_encoder.layer_norm(emb_set))  # B, H * W, cnn_hidden_size
         emb_set = emb_set.reshape(B, H_enc * W_enc, self.d_model)  # B, H * W, cnn_hidden_size
 
+        # use latest slot as init for new slot attention 
+        # prev_slot = torch.Tensor(list(self.soft_bank)[-1]).detach().unsqueeze(0) if len(self.soft_bank) > 0 else None
         # slots: B, num_slots, slot_size
         # attns: B, num_slots, num_inputs
-        slots, attns, (slots_blocked, attns_factor) = self.image_encoder.sysbinder(emb_set)
+        slots, attns, (slots_blocked, attns_factor) = self.image_encoder.sysbinder(emb_set, prev_slots=self.prev_slot)
 
-        # Memory bank for convex combination of slot and its predecessors
-        if len(self.soft_bank) == self.soft_bank.maxlen:   # pop items from the queue if queue is full
-            self.soft_bank.popleft()
-        self.soft_bank.append(slots.squeeze())
-        queue_tensor = torch.stack(list(self.soft_bank))
-        N = queue_tensor.shape[0]
-        convex_weights = self.convex_combination_weights[-N:]
-        convex_weights /=  convex_weights.sum()
-        slots = (queue_tensor * convex_weights.view(N, 1, 1)).sum(dim=0).unsqueeze(0)
+        reset_memory_bank = False
+        if self.prev_slot is not None:
+            soft_slot_sim = cosine_sim(slots, self.prev_slot)
+
+            # if there is only one entry in the bank, allow some more slack, as then SA is executed with prev_slot, leading to different results. But we actually want to encourage this, so decreased threshold
+            # if len(self.soft_bank) == 1:
+            #     stability_threshold = 0.99
+            # else:
+            stability_threshold = 0.9975
+            if soft_slot_sim < stability_threshold:    # if there is a jump in soft encodings, reset memory and try again
+                self.reset_memory()
+                reset_memory_bank = True
+                # prev_slot = None
+                # slots, attns, (slots_blocked, attns_factor) = self.image_encoder.sysbinder(emb_set, prev_slots=prev_slot)
+
+        self.prev_slot = slots
+
+        # TODO: if reset memory bank, don't add your current slot into it. The next will slightly alter from it and thus cause noisy hard encodings.
+
+        # Memory bank for convex combination of slot and its predecessors. Skip this if memory bank just got reset
+        if not reset_memory_bank:
+            if len(self.soft_bank) == self.soft_bank.maxlen:   # pop items from the queue if queue is full
+                self.soft_bank.popleft()
+            self.soft_bank.append(slots.squeeze())
+            queue_tensor = torch.stack(list(self.soft_bank))
+            N = queue_tensor.shape[0]
+            convex_weights = self.convex_combination_weights[-N:]
+            convex_weights /=  convex_weights.sum()
+            slots = (queue_tensor * convex_weights.view(N, 1, 1)).sum(dim=0).unsqueeze(0)
 
         attns = attns \
             .transpose(-1, -2) \
@@ -346,7 +375,7 @@ class SysBinderImageAutoEncoder(nn.Module):
             slots, attns_vis, attns, slots_blocked, attns_factor
         )
 
-        return slots, attns_vis, attns, (slots_blocked, attns_factor)
+        return slots, attns_vis, attns, (slots_blocked, attns_factor), reset_memory_bank
 
     def decode(self, slots):
         """
@@ -455,4 +484,14 @@ class SysBinderImageAutoEncoder(nn.Module):
                     obj_slot_ids = counts >= self.thresh_count_obj_slots
             obj_slot_ids_batch.append(obj_slot_ids.bool())
         return obj_slot_ids_batch
+    
+    def reset_memory(self):
+        """
+        Resets soft memory bank
+        """
+        self.soft_bank.clear()
 
+def cosine_sim(arr1: torch.Tensor, arr2: torch.Tensor):
+    arr1 = arr1.flatten()
+    arr2 = arr2.flatten()
+    return torch.dot(arr1, arr2) / (torch.linalg.vector_norm(arr1) * torch.linalg.vector_norm(arr2))
