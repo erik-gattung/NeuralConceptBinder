@@ -266,7 +266,7 @@ def add_masklets_and_pointers_to_dict(
         )
         object_pointers = inference_state["output_dict"][frame_outputs_key][
             frame_number
-        ]["obj_ptr"].squeeze(0)
+        ]["obj_ptr"]
         for i, (obj_id, obj_mask) in enumerate(frame_masklets.items()):
             object_dict[frame_number][object_id_mapping[obj_id]] = obj_mask
             pointers_dict[frame_number][object_id_mapping[obj_id]] = object_pointers[i]

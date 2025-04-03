@@ -561,7 +561,7 @@ def main():
 
 	# gather encodings and corresponding labels
 	base_dir = "/app/clevrer_videos/video_frames_val"
-	video_range = range(10000, 10100)
+	video_range = range(10000, 10200)
 	train_block_encs, train_imgs_np, train_img_locs = gather_obj_encs(model, base_dir, video_range, args, sea_raft_model, sea_raft_args, sam2_predictor)
 	
 	# swap batch with block axis

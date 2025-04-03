@@ -10,12 +10,12 @@ from PIL import Image
 
 
 class GlobDataset(Dataset):
-    def __init__(self, root, phase, img_height, img_width):
+    def __init__(self, root, phase, img_height, img_width, recursive=False):
         self.root = root
         # self.img_size = img_size
         self.img_height = img_height
         self.img_width = img_width
-        self.total_imgs = sorted(glob.glob(root))
+        self.total_imgs = sorted(glob.glob(root, recursive=recursive))
 
         if phase == 'train':
             self.total_imgs = self.total_imgs[:int(len(self.total_imgs) * 0.7)]

@@ -19,11 +19,15 @@ class SAMConceptBinder(nn.Module):
         self.majority_vote = args.majority_vote
         self.topk = args.topk
 
+        # create extra variables for SAM block encoding
+        self.SAM_slot_size = args.SAM_slot_size
+        self.SAM_num_blocks = args.SAM_num_blocks
+
         # load retrieval corpus
         self.retrieval_corpus = self.get_retrieval_corpus(args)
         self.retrieval_encs_dim = self.retrieval_corpus[0]["encs"].shape[1]
         self.prior_num_concepts = [len(torch.unique(self.retrieval_corpus[block_id]['ids']))
-                        for block_id in range(self.num_blocks)]
+                        for block_id in range(self.SAM_num_blocks)]
         print(f'\nNumber of concepts per block: \n{self.prior_num_concepts}\n')
 
         # integrate feedback to retriever if given:
@@ -43,7 +47,7 @@ class SAMConceptBinder(nn.Module):
 
         if revision:
             self.revise_num_concepts = [len(torch.unique(self.retrieval_corpus[block_id]['ids']))
-                            for block_id in range(self.num_blocks)]
+                            for block_id in range(self.SAM_num_blocks)]
             print(f'\nNumber of concepts per block with revision: \n{self.revise_num_concepts}\n')
 
         # load model for image encoding
@@ -74,7 +78,7 @@ class SAMConceptBinder(nn.Module):
         corpus_dict = pickle.load(open(args.retrieval_corpus_path, "rb"))
         retrieval_corpus = []
         # convert numpy arrays to torch tensors
-        for block_id in range(args.num_blocks):
+        for block_id in range(args.SAM_num_blocks):
             if args.retrieval_encs == "proto":
                 retrieval_corpus.append(
                     {
@@ -180,9 +184,8 @@ class SAMConceptBinder(nn.Module):
         :param slot: Slots to retrieve the discrete representation for [num_slots, slot_size]
         :return: Discrete representations of the slots [num_slots, num_blocks]
         """
-        slot_size = 256 # TODO: Actually account for changed slot size
         # block_size = self.slot_size // self.num_blocks
-        block_size = slot_size // self.num_blocks
+        block_size = self.SAM_slot_size // self.SAM_num_blocks
         discretized_slots = []
 
         print(slots.shape)
@@ -190,7 +193,7 @@ class SAMConceptBinder(nn.Module):
         for slot in torch.Tensor(slots):
 
             # reshape slot to single blocks
-            slot = slot.reshape(self.num_blocks, block_size)
+            slot = slot.reshape(self.SAM_num_blocks, block_size)
             print(slot.shape)
 
             representation = [
