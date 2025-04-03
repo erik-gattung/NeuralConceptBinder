@@ -5,7 +5,7 @@ import numpy as np
 def jaccard_similarity(arr1: np.ndarray, arr2: np.ndarray):
     arr1 = arr1.flatten()
     arr2 = arr2.flatten()
-    return np.sum(np.logical_and(arr1, arr2)) / arr1.size   # approximate union by len of array
+    return np.sum(arr1 == arr2) / arr1.size   # approximate union by len of array
 
 
 def main(hard_encoding_filepath, soft_encoding_filepath):
@@ -69,8 +69,10 @@ def main(hard_encoding_filepath, soft_encoding_filepath):
 
 
 if __name__ == "__main__":
-    min_video, max_video = 10000, 10099
-    checkpoint_name = "finetuning_0.1_0.8"
+    # min_video, max_video = 10000, 10099
+    # checkpoint_name = "finetuning_0.1_0.8"
+    min_video, max_video = 0, 7
+    checkpoint_name = "memory_v2_custom_complex_CLEVR"
     hard_encoding_filepath = f"/app/ncb/encoding_comparison_scripts/results/{checkpoint_name}/val_hard_encodings_{min_video}-{max_video}.pkl"
     soft_encoding_filepath = f"/app/ncb/encoding_comparison_scripts/results/{checkpoint_name}/val_soft_encodings_{min_video}-{max_video}.pkl"
     main(hard_encoding_filepath, soft_encoding_filepath)
