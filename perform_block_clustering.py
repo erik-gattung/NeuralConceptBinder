@@ -43,6 +43,7 @@ parser.add_argument('--image_channels', type=int, default=3)
 
 parser.add_argument('--checkpoint_path', default='logs/sysbind_orig_seed0/best_model.pt')
 parser.add_argument('--retrieval_corpus_path', default='logs/sysbind_orig_seed0/block_concept_dicts')
+parser.add_argument('--clustering_sample_size', default=5000)
 
 parser.add_argument('--retrieval_encs', default='prototype')
 parser.add_argument('--data_path', default='data/*.png')
@@ -645,3 +646,8 @@ def main():
 
 if __name__ == "__main__":
 	main()
+
+
+# call script with:
+# ./scripts/train/perform_block_clustering.sh 0 <path to clustering images dir> \
+# <model checkpoint path> 4 16
