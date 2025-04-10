@@ -31,10 +31,9 @@ def get_ncb_encoding(
     img_tensor = transform(img)
     img_tensor = img_tensor.unsqueeze(0)  # add batch dimension
 
-    codes, probs, slots, attns_vis, attns = model.encode(img_tensor)
+    codes, probs, slots, attns_vis, attns, reset_memory_bank = model.encode(img_tensor)
 
-    return codes, probs, slots, attns_vis, attns
-
+    return codes, probs, slots, attns_vis, attns, reset_memory_bank
 
 def main(video_range: range):
     # prepare ncb retrieval corpus
@@ -109,10 +108,11 @@ def main(video_range: range):
 
     # init encoding dict
     # root = Path("/app/clevrer_videos/square_frames_val")
-    root = Path("/app/custom_clevrer/square_images")
-    # root = Path("/app/custom_clevrer/square_face_images")
+    # root = Path("/app/custom_clevrer/square_images")
+    root = Path("/app/custom_clevrer/square_face_images")
     hard_encoding_dict = dict()
     soft_encoding_dict = dict()
+    reset_memory_bank_dict = dict()
 
 
     all_image_files = [Path.joinpath(root, f.name) for f in root.iterdir() if f.suffix.lower()[1:] in ["jpg", "jpeg", "png"]]
@@ -137,23 +137,28 @@ def main(video_range: range):
         if video_number not in hard_encoding_dict.keys():
             hard_encoding_dict[video_number] = dict()
             soft_encoding_dict[video_number] = dict()
+            reset_memory_bank_dict[video_number] = dict()
 
         for image in image_list:
             _, _, _, image_number = image.stem.split("_")
 
-            codes, _, cont_codes, _, _ = get_ncb_encoding(ncb_model, args, image)
+            codes, _, cont_codes, _, _, reset_memory_bank = get_ncb_encoding(ncb_model, args, image)
             hard_encoding_dict[video_number][image_number] = codes.cpu().squeeze().numpy().astype(int)
             soft_encoding_dict[video_number][image_number] = cont_codes.cpu().detach().squeeze().numpy()
+            reset_memory_bank_dict[video_number][image_number] = reset_memory_bank
 
     # save encodings as pickle
-    with open(f"/app/ncb/encoding_comparison_scripts/results/memory_v2_custom_CLEVR/val_hard_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
+    with open(f"/app/ncb/encoding_comparison_scripts/results/memory_v3_custom_complex_CLEVR/val_hard_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
         pickle.dump(hard_encoding_dict, f)
 
-    with open(f"/app/ncb/encoding_comparison_scripts/results/memory_v2_custom_CLEVR/val_soft_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
+    with open(f"/app/ncb/encoding_comparison_scripts/results/memory_v3_custom_complex_CLEVR/val_soft_encodings_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
         pickle.dump(soft_encoding_dict, f)
+
+    with open(f"/app/ncb/encoding_comparison_scripts/results/memory_v3_custom_complex_CLEVR/reset_memory_bank_{video_range[0]}-{video_range[-1]}.pkl", "wb") as f:
+        pickle.dump(reset_memory_bank_dict, f)
 
 
 if __name__ == "__main__":
     # video_range = range(10000, 10010)
-    video_range = range(1, 9)
+    video_range = range(0, 8)
     main(video_range)
