@@ -72,6 +72,7 @@ class MemoryConceptBinder(nn.Module):
         Resets soft memory bank of Sysbinder module
         """
         self.model.reset_memory()
+        self.model.prev_slot = None
 
     def get_retrieval_corpus(self, args):
         # load retrieval corpus

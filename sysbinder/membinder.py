@@ -102,7 +102,6 @@ class SysBinder(nn.Module):
     def forward(self, inputs, prev_slots):
         B, num_inputs, input_size = inputs.size()
 
-        # TODO: Use convex combination of random and previous slots?
         # initialize slots
         if prev_slots is None:
             slots = inputs.new_empty(B, self.num_slots, self.slot_size).normal_()
@@ -334,28 +333,24 @@ class SysBinderImageAutoEncoder(nn.Module):
 
         reset_memory_bank = False
         if self.prev_slot is not None:
-            soft_slot_sim = cosine_sim(slots, self.prev_slot)
+            soft_slot_sim = cosine_sim(slots.detach(), self.prev_slot)
 
             # if there is only one entry in the bank, allow some more slack, as then SA is executed with prev_slot, leading to different results. But we actually want to encourage this, so decreased threshold
             # if len(self.soft_bank) == 1:
             #     stability_threshold = 0.99
             # else:
             stability_threshold = 0.9975
-            if soft_slot_sim < stability_threshold:    # if there is a jump in soft encodings, reset memory and try again
+            if soft_slot_sim < stability_threshold:    # if there is a jump in soft encodings, reset memory so current encoding is not smoothed. Don't redo SA so you keep binded to the same places as before
                 self.reset_memory()
                 reset_memory_bank = True
-                # prev_slot = None
-                # slots, attns, (slots_blocked, attns_factor) = self.image_encoder.sysbinder(emb_set, prev_slots=prev_slot)
 
-        self.prev_slot = slots
-
-        # TODO: if reset memory bank, don't add your current slot into it. The next will slightly alter from it and thus cause noisy hard encodings.
+        self.prev_slot = slots.detach()
 
         # Memory bank for convex combination of slot and its predecessors. Skip this if memory bank just got reset
         if not reset_memory_bank:
             if len(self.soft_bank) == self.soft_bank.maxlen:   # pop items from the queue if queue is full
                 self.soft_bank.popleft()
-            self.soft_bank.append(slots.squeeze())
+            self.soft_bank.append(slots.squeeze().detach())
             queue_tensor = torch.stack(list(self.soft_bank))
             N = queue_tensor.shape[0]
             convex_weights = self.convex_combination_weights[-N:]
