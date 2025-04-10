@@ -46,6 +46,7 @@ parser.add_argument("--lr_warmup_steps", type=int, default=30000)
 parser.add_argument("--lr_half_life", type=int, default=250000)
 parser.add_argument("--clip", type=float, default=0.05)
 parser.add_argument("--epochs", type=int, default=500)
+parser.add_argument("--ce_weight", type=float, default=1.0)
 
 parser.add_argument("--num_iterations", type=int, default=3)
 parser.add_argument("--num_slots", type=int, default=4)
@@ -115,25 +116,28 @@ def get_args():
 def train_and_evaluate(trial, args):
 
     # Optuna suggests hyperparameters
-    args.lr_dvae = trial.suggest_float("lr_dvae", 1e-6, 1e-3, log=True)
-    args.lr_enc = trial.suggest_float("lr_enc", 1e-6, 1e-3, log=True)
-    args.lr_dec = trial.suggest_float("lr_dec", 1e-6, 1e-3, log=True)
-    # args.tau_start = trial.suggest_float("tau_start", 0.5, 1.5)
+    args.lr_dvae = trial.suggest_float("lr_dvae", 1e-9, 1e-5, log=True)
+    args.lr_enc = trial.suggest_float("lr_enc", 1e-5, 1e-1, log=True)
+    args.lr_dec = trial.suggest_float("lr_dec", 1e-9, 1e-5, log=True)
+    args.tau_start = trial.suggest_float("tau_start", 0.5, 1.1)
+    args.tau_final = trial.suggest_float("tau_final", 0.1, 0.5)
+    args.tau_steps = trial.suggest_int("tau_steps", 1, 10)
+    # args.ce_weight = trial.suggest_float("ce_weight", 1, 4)
 
     set_seed(args.seed)
 
     # a single video has 200k images
     train_dataset = GlobDataset(
         root=args.data_path,
-        # phase="train",
-        phase=15000,    # get 15000 random samples instead
+        phase="train",
+        # phase=15000,    # get 15000 random samples instead for UT Ego
         img_height=args.image_height,
         img_width=args.image_width,
     )
     val_dataset = GlobDataset(
         root=args.data_path,
-        # phase="val",
-        phase = 5000,   # get 5000 random samples
+        phase="val",
+        # phase = 5000,   # get 5000 random samples instead for UT Ego
         img_height=args.image_height,
         img_width=args.image_width,
     )
@@ -226,6 +230,8 @@ def train_and_evaluate(trial, args):
         except:
             pass
 
+    first_val_loss = None
+
     for epoch in range(start_epoch, args.epochs):
         model.train()
 
@@ -267,7 +273,7 @@ def train_and_evaluate(trial, args):
                 mse = mse.mean()
                 cross_entropy = cross_entropy.mean()
 
-            loss = mse + cross_entropy
+            loss = mse + args.ce_weight * cross_entropy
 
             loss.backward()
 
@@ -297,28 +303,39 @@ def train_and_evaluate(trial, args):
             val_cross_entropy /= val_epoch_size
             val_mse /= val_epoch_size
 
-            val_loss = val_mse + val_cross_entropy
+            val_loss = val_mse + args.ce_weight * val_cross_entropy
+
+            # Save first val loss to look for convergence
+            if first_val_loss is None:
+                first_val_loss = val_loss
 
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 best_epoch = epoch + 1
 
-            trial.report(val_loss, epoch)
+            # TODO: what does report do? Change its loss to fit too
+            trial.report(val_loss/first_val_loss, epoch)
+
             if trial.should_prune():
                 raise optuna.exceptions.TrialPruned()
 
             torch.cuda.empty_cache()
     
-    return best_val_loss
+    print(f"First val loss: {first_val_loss}, Last val loss: {val_loss}, Best val loss: {best_val_loss}")
+    return val_loss, first_val_loss
 
 
 def objective(trial):
     args = get_args()
-    args.epochs = 10
-    return train_and_evaluate(trial, args)
+    args.epochs = 10    # 10
+    val_loss, first_val_loss = train_and_evaluate(trial, args)
+    # return val_loss    # for normal hp
+    
+    # make sure that training converges lol
+    return val_loss / first_val_loss
 
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=12, timeout=None, show_progress_bar=True)  # Run 12 trials
+    study.optimize(objective, n_trials=20, timeout=None, show_progress_bar=True)  # Run 12 trials
     print("Best Hyperparameters:", study.best_params)
